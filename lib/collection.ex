@@ -92,6 +92,8 @@ defmodule Collection do
       iex(3)> Label.load(m, true)
       %Label{color: nil, name: nil}
 
+  Der Hintergrund ist, dass die MongoDB stets binarys als keys zurückliefert und structs verwenden atoms als keys.
+
   ## Collections
 
   Bei der MongoDB werden die Dokumente in Collections geschrieben. Wir können durch das `collection/2` Macro eine
@@ -159,7 +161,7 @@ defmodule Collection do
 
           def find_one(id) do
             :mongo
-            |> Mongo.find_one(@collection, %{@id: id})
+            |> Mongo.find_one(@collection, %{@id => id})
             |> load()
           end
 
@@ -201,8 +203,6 @@ defmodule Collection do
 
           use Collection
 
-          @collection nil
-
           collection "cards" do
             attribute   :title, String.t()
             attribute   :list, BSON.ObjectId.t()
@@ -225,7 +225,99 @@ defmodule Collection do
           title: nil
         }
 
-  Es geht hier weiter
+  ## Example `embeds_many`
+
+  ## `after_load/1` and `before_dump/1` macros
+
+  Manchmal möchte man nach dem Laden des Datensatzes eine Nachbearbeitung durchführen, ob z.B.
+  abgeleitete Attribute zu erstellen. Umgekehrt möchte man vor dem Speichern diese Attribute
+  wieder entfernen, damit diese nicht gespeichert werden.
+
+  Aus diesem Grund gibt es die beiden Macros `after_load/1` and `before_dump/1`. Hier wird eine
+  Funktion angegeben, die nach dem `load/0` bzw. vor dem `dump` aufgerufen wird:
+
+        defmodule Board do
+
+        use Collection
+
+          collection "boards" do
+
+            attribute   :id, String.t() ## derived attribute
+            attribute   :title, String.t()
+            attribute   :created, DateString.t(), default: &DateTime.utc_now/0
+            attribute   :modified, DateString.t(), default: &DateTime.utc_now/0
+            embeds_many :lists, BoardList
+
+            after_load  &Board.after_load/1
+            before_dump &Board.before_dump/1
+          end
+
+          def after_load(%Board{_id: id} = board) do
+            %Board{board | id: BSON.ObjectId.encode!(id)}
+          end
+
+          def before_dump(board) do
+            %Board{board | id: nil}
+          end
+
+          def new(title) do
+            new()
+            |> Map.put(:title, title)
+            |> Map.put(:lists, [])
+            |> after_load()
+          end
+
+          def store(board) do
+            with map <- dump(board),
+                {:ok, _} <- Mongo.insert_one(:mongo, @collection, map) do
+              :ok
+            end
+          end
+
+          def fetch(id) do
+            :mongo
+            |> Mongo.find_one(@collection, %{@id => id})
+            |> load()
+          end
+
+        end
+
+  In diesem Beispiel wird das Attribut `id` von der eigentlich ID abgeleitet und als String gespeichert.
+  Diese Attribut wird häufig verwendet und daher ersparen wir uns die ständige Konvertierung der ID. Damit die
+  abgeleitete `id` nicht gespeichert wird, wird eine `before_dump/1` Funktion aufgerufen, die das Attribut
+  einfach entfernt:
+
+        iex(1)> board = Board.new("Vega")
+        %Board{
+          _id: #BSON.ObjectId<5ec3f802306a5f3ee3b71cf2>,
+          created: ~U[2020-05-19 15:15:14.374556Z],
+          id: "5ec3f802306a5f3ee3b71cf2",
+          lists: [],
+          modified: ~U[2020-05-19 15:15:14.374549Z],
+          title: "Vega"
+        }
+        iex(2)> Board.store(board)
+        :ok
+        iex(3)> Board.fetch(board._id)
+        %Board{
+          _id: #BSON.ObjectId<5ec3f802306a5f3ee3b71cf2>,
+          created: ~U[2020-05-19 15:15:14.374Z],
+          id: "5ec3f802306a5f3ee3b71cf2",
+          lists: [],
+          modified: ~U[2020-05-19 15:15:14.374Z],
+          title: "Vega"
+        }
+
+  Rufen wir den Datensatz in der Mongo-Shell auf, dann sehen wir, dass das Attribute `id` dort nicht gespeichert wurde:
+
+        > db.boards.findOne({"_id" : ObjectId("5ec3f802306a5f3ee3b71cf2")})
+        {
+          "_id" : ObjectId("5ec3f802306a5f3ee3b71cf2"),
+          "created" : ISODate("2020-05-19T15:15:14.374Z"),
+          "lists" : [ ],
+          "modified" : ISODate("2020-05-19T15:15:14.374Z"),
+          "title" : "Vega"
+        }
 
   """
 
