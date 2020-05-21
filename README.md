@@ -1,6 +1,7 @@
 # Yildun
 
-**TODO: Add description**
+Yildun is a white-hued star in the northern circumpolar constellation of Ursa Minor, forming the second star in the bear's tail.
+    And it is a very small library to support structs while using the MongoDB driver for Elixir.
 
 ## Installation
 

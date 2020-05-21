@@ -1,18 +1,28 @@
 defmodule Yildun.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+
   def project do
     [
+      source_url: "https://github.com/zookzook/yildun",
       app: :yildun,
-      version: "0.1.0",
+      name: "yidun",
+      version: @version,
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      name: "Yidun",
-      source_url: "https://github.com/zookzook/yildun",
-      docs: [main: "Collection", # The main page in the docs
-        extras: ["README.md"]]
-    ]
+      package: package(),
+      description: description(),
+      docs: docs()
+   ]
+  end
+
+  defp description() do
+    """
+    Yildun is a white-hued star in the northern circumpolar constellation of Ursa Minor, forming the second star in the bear's tail.
+    And it is a very small library to support structs while using the MongoDB driver for Elixir.
+    """
   end
 
   # Run "mix help compile.app" to learn about applications.
@@ -26,9 +36,21 @@ defmodule Yildun.MixProject do
   defp deps do
     [
       {:mongodb_driver, "~> 0.7"},
-      {:ex_doc, "~> 0.21", only: :dev, runtime: false},
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false}
     ]
+  end
+
+  defp package() do
+    [maintainers: ["Michael Maier"],
+      licenses: ["Apache 2.0"],
+      links: %{"GitHub" => "https://github.com/zookzook/yildun"}]
+  end
+
+  defp docs() do
+    [main: "Collection", # The main page in the docs
+      source_ref: "#{@version}",
+      canonical: "http://hexdocs.pm/yildun",
+      source_url: "https://github.com/zookzook/yildun",
+      extras: ["README.md"]]
   end
 end
