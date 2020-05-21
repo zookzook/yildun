@@ -1,10 +1,10 @@
 defmodule Collection do
   @moduledoc """
 
-  Bei der Benutzung der MongoDB-Drivers werden ausschließlich Maps und Keyword-Listen verwenden.
-  Möchte man nun anstelle der Maps lieber Structs verwenden, um dem Dokument ein stärkere Bedeutung zu geben oder
-  seine Wichtigkeit zu betonen,
-  so muss man aus der Map manuell ein `defstruct` machen:
+  When using the [MongoDB driver](https://hex.pm/packages/mongodb_driver) only maps and keyword lists are used to
+  represent documents.
+  If you would prefer to use structs instead of the maps to give the document a stronger meaning or to emphasize
+  its importance, you have to create a `defstruct` and fill it from the map manually:
 
       defmodule Label do
         defstruct name: "warning", color: "red"
@@ -14,32 +14,32 @@ defmodule Collection do
       %{"name" => "warning", "color" => "red"}
       iex> label = %Label{name: label_map["name"], color: label_map["color"]}
 
-  Wir haben ein Module `Label` als `defstruct` definiert, anschließend holen wir uns das erste Label-Dokument aus
-  der Collection `labels`. Die Funktion `find_one` liefert eine Map zurück. Diese konvertieren wir dann manuell und
-  erhalten damit das gewünschte struct zurück.
+  We have defined a module `Label` as` defstruct`, then we get the first label document
+  the collection `labels`. The function `find_one` returns a map. We convert the map manually and
+  get the desired struct.
 
-  Möchten wir ein neues Struct speichern, so müssen wir die umgekehrte Arbeit durchführen. Wir wandeln das struct in eine Map um:
+  If we want to save a new structure, we have to do the reverse. We convert the struct into a map:
 
       iex> label = %Label{}
       iex> label_map = %{"name" => label.name, "color" => label.color}
       iex> {:ok, _} = Mongo.insert_one(:mongo, "labels", label_map)
 
-  Alternativ kann man auch den Key `__struct__` aus `label` entfernen. Der MongoDB-Treiber wandel die Atom-Keys automatisch
-  in Strings um.
+  Alternatively, you can also remove the `__struct__` key from `label`. The MongoDB driver automatically
+  converts the atom keys into strings.
 
       iex>  Map.drop(label, [:__struct__])
       %{color: :red, name: "warning"}
 
-  Wenn man verschachtelte Strukturen verwendet, wird die Arbeit etwas aufwändiger. In diesem Fall muss man die inneren Strukturen
-  ebenfalls manuell konvertieren.
+  If you use nested structures, the work becomes a bit more complex. In this case, you have to use the inner structures
+  convert manually, too.
 
-  Betrachtet man die notwendigen Arbeiten genauer, so lassen sich zwei grundlegende Funktionen daraus ableiten:
+  If you take a closer look at the necessary work, two basic functions can be derived:
 
-    * `load` Konvertierung der Map in eine Struct.
-    * `dump` Konvertierung des Structs in eine Map.
+    * `load` Conversion of the map into a struct.
+    * `dump` Conversion of the struct into a map.
 
-  Diese Modul stellt die notwendigen Macros zur Verfügung, um diesen Boilerplate-Code zu automatisieren.
-  Das obige Beispiel läßt sich wie folgt umschreiben:
+  This module provides the necessary macros to automate this boilerplate code.
+  The above example can be rewritten as follows:
 
       defmodule Label do
 
@@ -52,7 +52,7 @@ defmodule Collection do
 
       end
 
-  Damit erhält man folgendes Modul:
+  This results in the following module:
 
       defmodule Label do
 
@@ -70,8 +70,8 @@ defmodule Collection do
 
       end
 
-  Man kann nun neue Strukturen mit den Default-Werten erzeugen und die Konvertierungsfunktionen zwischen Maps und
-  Structs aufrufen:
+  You can now create new structs with the default values and use the conversion functions between maps and
+  structs:
 
       iex(1)> x = Label.new()
       %Label{color: :red, name: "warning"}
@@ -80,24 +80,24 @@ defmodule Collection do
       iex(3)> Label.load(m, true)
       %Label{color: :red, name: "warning"}
 
-  Die `load/2` Funktion unterscheidet zwischen Keys vom Typ Strings `load(map, false)` und Keys von Typ Atom `load(map, true)`.
-  Der Default ist `load(map, false)`:
+  The `load/2` function distinguishes between keys of type binarys `load(map, false)` and keys of type atoms `load(map, true)`.
+  The default is `load(map, false)`:
 
       iex(1)> m = %{"color" => :red, "name" => "warning"}
       iex(2)> Label.load(m)
       %Label{color: :red, name: "warning"}
 
-  Würde man nun Atoms als Keys erwarten, ist das Ergebnis der Konvertierung in diesem Fall nicht korrekt:
+  If you would now expect atoms as keys, the result of the conversion is not correct in this case:
 
       iex(3)> Label.load(m, true)
       %Label{color: nil, name: nil}
 
-  Der Hintergrund ist, dass die MongoDB stets binarys als keys zurückliefert und structs verwenden atoms als keys.
+  The background is that MongoDB always returns binarys as keys and structs use atoms as keys.
 
   ## Collections
 
-  Bei der MongoDB werden die Dokumente in Collections geschrieben. Wir können durch das `collection/2` Macro eine
-  Collection anlegen:
+  In MongoDB, documents are written in collections. We can use the `collection/2` macro to create
+  a collection:
 
         defmodule Card do
 
@@ -111,31 +111,26 @@ defmodule Collection do
 
         end
 
-  Durch das Macro `collection/2` wird eine Collection angelegt, die im Prinzip einem Dokument gleicht, wobei
-  ein Attribut für die ID automatisch hinzugefügt wird. Zusätzlich wird die Attribut `@collection` belegt und
-  kann in Funktionen als Konstante verwendet werden.
+  The `collection/2` macro creates a collection that is basically similar to a document, where
+  an attribute for the ID is added automatically. Additionally the attribute `@collection` is assigned and
+  can be used as a constant in other functions.
 
-  In dem obigen Beispiel unterdrücken wir nur eine Warnung des Editors durch `@collection`. Das Macro erzeugt
-  in dem Beispiel den folgenden Ausdruck: `@collection "cards"`. Default-mäßig wird für die ID das folgende Attribut erzeugt:
+  In the example above we only suppress a warning of the editor by '@collection'. The macro creates the following
+  expression: `@collection "cards"`. By default, the following attribute is created for the ID:
 
       {:_id, BSON.ObjectId.t(), &Mongo.object_id()/0}
 
-  wobei der Default-Wert über die Funktion `&Mongo.object_id()/0` beim Aufruf von `new/0` erzeugt wird.
+  where the default value is created via the function '&Mongo.object_id()/0' when calling 'new/0':
 
         iex> Card.new()
         %Card{_id: #BSON.ObjectId<5ec3d04a306a5f296448a695>, title: "new title"}
 
-  Zusätzlich werden zwei weitere Reflection-Funktionen bereitgestellt:
+  Two additional reflection features are also provided:
 
         iex> Card.__collection__(:id)
         :_id
         iex(3)> Card.__collection__(:collection)
         "cards"
-
-  ## Load and dump functions
-
-  Kernfunktion dieses Moduls sind die erzeugten `load/1` und `dump/1` Funktionen. Damit lassen sich auch
-  komplexere Document-Strukturen von Maps in Structs und umgekehrt konvertieren.
 
   ## MongoDB example
 
@@ -178,7 +173,20 @@ defmodule Collection do
       iex(2)> Card.find_one(card._id)
       %XCard{_id: #BSON.ObjectId<5ec3ecbf306a5f3779a5edaa>, title: "new title"}
 
+  ## id generator
 
+  In der MongoDB ist es üblich, dass als id das attribut `_id` verwendet wird. Als Wert wird
+  ein objectid verwendet, dass vom mongodb-treiber erzeugt wird. Dieses verhalten kann durch
+  das module attribut `@id_generator` bei Verwendung von `collection` gesteuert werden.
+  Die Default-Einstellung lautet:
+
+        {:_id, BSON.ObjectId.t(), &Mongo.object_id()/0}
+
+  Nun kann man dieses Tupel `{name, type, function}` nach belieben überschreiben:
+
+        @id_generator false # keine ID-Erstellung
+        @id_generator {id, String.t, &IDGenerator.next()/0} # customized name and generator
+        @id_generator nil # use default: {:_id, BSON.ObjectId.t(), &Mongo.object_id()/0}
 
   ### Embedded documents
 
@@ -399,11 +407,6 @@ defmodule Collection do
         args        = (@attributes ++ embed_ones ++ embed_manys)
                       |> Enum.map(fn {name, opts} -> {name, opts[:default]} end)
                       |> Enum.filter(fn {_name, fun} -> is_function(fun) end)
-
-        args = case @id_generator do
-          {id, fun} when id != nil -> [@id_generator | args]
-          _                        -> args
-        end
 
         def new() do
           %__MODULE__{unquote_splicing(Collection.struct_args(args))}
