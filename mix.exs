@@ -47,9 +47,8 @@ defmodule Yildun.MixProject do
   end
 
   defp docs() do
-    [main: "Collection", # The main page in the docs
+    [main: "Yildun.Collection", # The main page in the docs
       source_ref: "#{@version}",
-      canonical: "http://hexdocs.pm/yildun",
       source_url: "https://github.com/zookzook/yildun",
       extras: ["README.md"]]
   end

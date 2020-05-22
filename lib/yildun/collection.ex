@@ -11,6 +11,8 @@ defmodule Yildun.Collection do
     * support for `after load` function
     * support for `before dump` function
     * support for id generation
+    * support for default values
+    * support for derived values
 
   When using the [MongoDB driver](https://hex.pm/packages/mongodb_driver) only maps and keyword lists are used to
   represent documents.
@@ -104,6 +106,24 @@ defmodule Yildun.Collection do
       %Label{color: nil, name: nil}
 
   The background is that MongoDB always returns binarys as keys and structs use atoms as keys.
+
+  ## Default and derived values
+
+  Attributes have two options:
+
+  * `default:` a value or a function, which is called, when a new struct is created
+  * `derived:` `true` to indicate, that is attribute should not be saved to the database
+
+  If you call `new/0` a new struct is returned filled with the default values. In case of a function the
+  function is called to use the return value as default.
+
+        attribute: created, DateTime.t(), &DateTime.utc_now/0
+
+  If you mark an attribute as a derived attribute (`derived: true`) then the dump function will remove
+  the attributes from the struct automatically for you, so these kind of attributes won't be saved in
+  the database.
+
+        attribute :id, String.t(), derived: true
 
   ## Collections
 
@@ -354,6 +374,7 @@ defmodule Yildun.Collection do
       import Collection, only: [document: 1, collection: 2]
 
       Module.register_attribute(__MODULE__, :attributes, accumulate: true)
+      Module.register_attribute(__MODULE__, :derived, accumulate: true)
       Module.register_attribute(__MODULE__, :types, accumulate: true)
       Module.register_attribute(__MODULE__, :embed_ones, accumulate: true)
       Module.register_attribute(__MODULE__, :embed_manys, accumulate: true)
@@ -507,6 +528,9 @@ defmodule Yildun.Collection do
                       |> Enum.filter(fn {_name, mod, _opts} -> Collection.has_dump_function?(mod) end)
                       |> Enum.map(fn {name, mod, _opts} -> {name, mod} end)
 
+        def dump(nil) do
+          nil
+        end
         def dump(xs) when is_list(xs) do
           Enum.map(xs, fn struct -> dump(struct) end)
         end
@@ -522,6 +546,7 @@ defmodule Yildun.Collection do
                    |> Enum.reduce(struct, fn {name, doc}, acc -> Map.put(acc, name, doc)  end)
 
           struct
+          |> Map.drop(unquote(@derived))
           |> @before_dump_fun.()
           |> Collection.dump()
         end
@@ -659,6 +684,12 @@ defmodule Yildun.Collection do
   Adds the attribute to the attributes list.
   """
   def __attribute__(mod, name, type, opts) do
+
+    case opts[:derived] do
+      true  -> Module.put_attribute(mod, :derived, name)
+      _     -> []
+    end
+
     Module.put_attribute(mod, :types, {name, type})
     Module.put_attribute(mod, :attributes, {name, opts})
   end
@@ -683,11 +714,11 @@ defmodule Yildun.Collection do
 
   defp ensure_nested_map(data), do: data
 
-  defp filter_nils(map) when is_map(map) do
+  def filter_nils(map) when is_map(map) do
     Enum.reject(map, fn {_key, value} -> is_nil(value) end)
     |> Enum.into(%{})
   end
-  defp filter_nils(keyword) when is_list(keyword) do
+  def filter_nils(keyword) when is_list(keyword) do
     Enum.reject(keyword, fn {_key, value} -> is_nil(value) end)
   end
 
