@@ -76,10 +76,10 @@ defmodule Yildun.Collection do
         def new()...
         def load(map)...
         def dump(%Label{})...
-        def __collection(:attributes)...
-        def __collection(:types)...
-        def __collection(:collection)...
-        def __collection(:id)...
+        def __collection__(:attributes)...
+        def __collection__(:types)...
+        def __collection__(:collection)...
+        def __collection__(:id)...
 
       end
 
@@ -149,9 +149,9 @@ defmodule Yildun.Collection do
   In the example above we only suppress a warning of the editor by `@collection`. The macro creates the following
   expression: `@collection "cards"`. By default, the following attribute is created for the ID:
 
-      {:_id, BSON.ObjectId.t(), &Mongo.object_id()/0}
+      {:_id, BSON.ObjectId.t(), &Mongo.object_id/0}
 
-  where the default value is created via the function `&Mongo.object_id()/0` when calling `new/0`:
+  where the default value is created via the function `&Mongo.object_id/0` when calling `new/0`:
 
         iex> Card.new()
         %Card{_id: #BSON.ObjectId<5ec3d04a306a5f296448a695>, title: "new title"}
@@ -211,13 +211,13 @@ defmodule Yildun.Collection do
   the module attribute `@id_generator` when using `collection`.
   The default setting is
 
-        {:_id, BSON.ObjectId.t(), &Mongo.object_id()/0}
+        {:_id, BSON.ObjectId.t(), &Mongo.object_id/0}
 
   Now you can overwrite this tuple `{name, type, function}` as you like:
 
         @id_generator false # no ID creation
         @id_generator {id, String.t, &IDGenerator.next()/0} # customized name and generator
-        @id_generator nil # use default: {:_id, BSON.ObjectId.t(), &Mongo.object_id()/0}
+        @id_generator nil # use default: {:_id, BSON.ObjectId.t(), &Mongo.object_id/0}
 
   ### Embedded documents
 
@@ -410,7 +410,7 @@ defmodule Yildun.Collection do
         @collection unquote(name)
 
         @id_generator (case @id_generator do
-          nil   -> {:_id, quote(do: BSON.ObjectId.t()), &Mongo.object_id()/0}
+          nil   -> {:_id, quote(do: BSON.ObjectId.t()), &Mongo.object_id/0}
           false -> {nil, nil, nil}
           other -> other
         end)
