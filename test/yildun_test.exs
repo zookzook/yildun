@@ -1,7 +1,10 @@
 defmodule YildunTest do
-  use ExUnit.Case
 
-  test "greets the world" do
-    assert Yildun.hello() == :world
+  use Yildun.Collection
+
+  @collection "rooms"
+  collection @collection do
+    attribute(:roomId, String.t())
   end
+
 end

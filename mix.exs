@@ -35,7 +35,7 @@ defmodule Yildun.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:mongodb_driver, "~> 0.7"},
+      {:mongodb_driver, "~> 0.7.4"},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false}
     ]
   end
